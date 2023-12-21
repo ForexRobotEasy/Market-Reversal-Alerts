@@ -1,0 +1,109 @@
+
+//+------------------------------------------------------------------+
+//|                                              Market Reversal Alerts|
+//|                                      Developer: Forex Robot Easy Team|
+//|                                                  Website: forexroboteasy.com|
+//+------------------------------------------------------------------+
+
+// Define input parameters
+input int breakoutPeriod = 20; // Number of candles to consider for breakout identification
+input int trailPeriod = 10; // Number of candles to trail the rectangle
+input double rectangleWidth = 0.001; // Width of the rectangle in percentage of the candle's range
+
+// Define global variables
+double prevHigh, prevLow; // Previous high and low prices
+bool breakoutUp, breakoutDown; // Flags for breakout identification
+bool drawRectangle; // Flag to indicate if a rectangle should be drawn
+double rectangleTop, rectangleBottom; // Rectangle top and bottom levels
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    // Set previous high and low to initial values
+    prevHigh = 0;
+    prevLow = 0;
+
+    // Set breakout flags to false
+    breakoutUp = false;
+    breakoutDown = false;
+
+    // Set draw rectangle flag to false
+    drawRectangle = false;
+
+    // Set rectangle top and bottom levels to initial values
+    rectangleTop = 0;
+    rectangleBottom = 0;
+
+    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total,
+                const int prev_calculated,
+                const datetime& time[],
+                const double& open[],
+                const double& high[],
+                const double& low[],
+                const double& close[],
+                const long& tick_volume[],
+                const long& volume[],
+                const int& spread[])
+{
+    // Iterate through the new candles
+    for (int i = prev_calculated; i < rates_total; i++)
+    {
+        // Identify breakouts
+        if (i > breakoutPeriod)
+        {
+            double currentHigh = High[i];
+            double currentLow = Low[i];
+
+            if (currentHigh > prevHigh)
+            {
+                breakoutUp = true;
+                breakoutDown = false;
+            }
+            else if (currentLow < prevLow)
+            {
+                breakoutUp = false;
+                breakoutDown = true;
+            }
+            else
+            {
+                breakoutUp = false;
+                breakoutDown = false;
+            }
+        }
+
+        // Draw rectangle and trail it
+        if (drawRectangle)
+        {
+            ObjectCreate(0, 'Rectangle', OBJ_RECTANGLE, 0, Time[i], rectangleTop, Time[i + trailPeriod], rectangleBottom);
+        }
+
+        // Detect price closing above or below the rectangle
+        if (i > breakoutPeriod + trailPeriod)
+        {
+            if (breakoutUp && close[i] > rectangleTop)
+            {
+                // Price closes above the rectangle, indicating a potential shift in market structure
+                Print('Potential market reversal detected - price closed above the rectangle');
+            }
+            else if (breakoutDown && close[i] < rectangleBottom)
+            {
+                // Price closes below the rectangle, indicating a potential shift in market structure
+                Print('Potential market reversal detected - price closed below the rectangle');
+            }
+        }
+
+        // Update previous high and low
+        prevHigh = High[i];
+        prevLow = Low[i];
+    }
+
+    return(rates_total);
+}
